@@ -260,8 +260,9 @@ class Explosion(pg.sprite.Sprite):
 
 class Boss():
     """
-    敵機に関するクラス
-    ボスのクラス（大きさだけいじればいいかな）
+    ボスのクラス
+    出現位置から降下させることで、ボス感を出している
+    インターバルはボスのレーザーの判定に使う（今回は違う）
     """
     
     def __init__(self):
@@ -292,7 +293,21 @@ class Boss():
 
 
 class Bomb(pg.sprite.Sprite):
+    """
+    ボスの攻撃の一つ
+    爆弾円を生成し、爆破場所を知らせたのち、爆発画像に切り替える
+    衝突判定は爆発画像から
+    生成場所は、こうかとんが動ける範囲の中でランダムな場所
+    （これは今回はマージできてないので使用できない）
+    爆発中かどうかのステータス：bom_status
+    により衝突判定を切り替える
+    爆発までの時間：bom_timer
+    """
     def __init__(self, boss: "Boss", bird: Bird, triple = 0):
+        """
+        引数：tripleは、爆弾を三つ生成する際に使用するだけのため
+        初期値を0とし、爆弾を一つ生成する場合には影響を与えない
+        """
         super().__init__()
         rad = 40  # 爆弾円の半径
         self.image = pg.Surface((2*rad, 2*rad))
@@ -300,6 +315,8 @@ class Bomb(pg.sprite.Sprite):
         pg.draw.circle(self.image, color, (rad, rad), rad)
         self.image.set_colorkey((0, 0, 0))
         self.rect = self.image.get_rect()
+
+        self.rect.center = bird.rect.center
 
         #こうかとんが動ける範囲をランダムに爆発する
         self.rect.center = (
@@ -311,7 +328,7 @@ class Bomb(pg.sprite.Sprite):
         self.bom_status = "normal"
 
     def update(self):
-        #爆弾円が表示されて、8秒経ったら爆発画像に切り替える
+        #爆弾円が表示されて、数秒経ったら爆発画像に切り替える
 
         self.bom_timer += 1
         if self.bom_timer >= 200 and self.bom_status == "normal":
@@ -325,6 +342,7 @@ class Bomb(pg.sprite.Sprite):
             self.bom_status = "explosion"
 
         if self.bom_timer >= 250:
+            self.bom_status == "normal"
             self.kill()
 
 
@@ -347,65 +365,6 @@ class Life():
             x = WIDTH - 50 - i * 45
             y = HEIGHT - 600
             screen.blit(self.img, (x, y))
-
-
-# class Gravity(pg.sprite.Sprite):
-#     """
-#     今回は、小さい敵と障害物と爆弾を消せる必殺技クラス
-#     """
-#     def __init__(self, life):
-#         super().__init__()      #Groupのために継承
-
-#         self.life = life
-#         self.image = pg.Surface((WIDTH, HEIGHT))
-#         self.image.set_alpha(128)
-#         self.rect = self.image.get_rect()
-
-#     def update(self):
-#         self.life -= 1
-#         if self.life <= 0:
-#             self.kill()
-
-
-# class EMP():
-#     def __init__(self, emys, bombs, screen):
-#         for emy in emys:
-#             emy.interval = float("inf")
-#             emy.image = pg.transform.laplacian(emy.image)
-
-#         for bom in bombs:
-#             bom.speed /= 2
-#             bom.state = "inactive"
-
-#         image = pg.Surface((WIDTH, HEIGHT))
-#         image.fill((255, 255, 0))
-#         image.set_alpha(200)
-
-#         screen.blit(image, [0, 0])
-#         pg.display.update()
-#         time.sleep(0.05)
-
-
-# class Shield(pg.sprite.Sprite):
-#     def __init__(self, life, bird:Bird):
-#         super().__init__()
-#         self.life = life
-
-#         self.image = pg.Surface((20, bird.rect.height * 2))
-#         pg.draw.rect(self.image, (0, 0, 255), (0, 0, 10, bird.rect.height * 2))
-#         self.rect = self.image.get_rect()
-
-#         vx, vy = bird.dire  #向いてる方向のベクトルをvx, vyに代入
-#         self.rect.centerx = bird.rect.centerx + vx * bird.rect.width
-#         self.rect.centery = bird.rect.centery + vy * bird.rect.height
-#         kakudo = math.degrees(math.atan2(-vy, vx))
-#         self.image = pg.transform.rotozoom(self.image, kakudo, 1)
-#         self.image.set_colorkey((0, 0, 0))      #ここに入れないと黒くなる
-
-#     def update(self):
-#         self.life -= 1
-#         if self.life <= 0:
-#             self.kill()
 
 
 def main():
@@ -438,15 +397,17 @@ def main():
         bomb_cooldown += 1
 
 
-        if tmr >= 6000:
+        if tmr >= 6100:
 
-            #bombの処理　爆発を三回させるかどうか
+            #爆弾が画面上になければ、生成する
             if len(bombs) == 0 and bomb_cooldown >= 200 and attack_count < 3:
                 bombs.add(Bomb(boss, bird))
                 bomb_cooldown = 0
                 attack_count += 1
 
+            #bombの処理　爆発を三回させるかどうか
             if len(bombs) == 0 and attack_count >= 3:
+                #重なってしまうので、ずれた場所に生成する
                 bombs.add(Bomb(boss, bird, -50))
                 bombs.add(Bomb(boss, bird, 0))
                 bombs.add(Bomb(boss, bird, 50))
@@ -593,14 +554,18 @@ def main():
         # for bomb in pg.sprite.groupcollide(bombs, gravity, True, False):
         #     exps.add(Explosion(bomb, 50))
 
-        for bomb in pg.sprite.spritecollide(bird, bombs, True):
-            exps.add(Explosion(bomb, 50))
-            life.num -= 1
-            pg.display.update()
-            if life.num <= 0:
-                time.sleep(2)
-                return  
-
+        #グループからbombを取り出して、bom_statusが
+        #"explosion"の時だけ衝突判定させる
+        for bomb in bombs:
+            if bomb.bom_status == "explosion":
+                for bomb in pg.sprite.spritecollide(bird, bombs, True):
+                    exps.add(Explosion(bomb, 50))
+                    life.num -= 1
+                    pg.display.update()
+                    if life.num <= 0:
+                        time.sleep(2)
+                        return  
+            
         for obstacles in pg.sprite.spritecollide(bird, obstacle, True):
             exps.add(Explosion(obstacles, 50))
             #こうかとん悲しみエフェクト
