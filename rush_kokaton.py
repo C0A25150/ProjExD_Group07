@@ -105,9 +105,9 @@ class Map():
         self.x2 -= self.speed
 
         #背景画像
-        if time <= 20:
+        if time <= 2000:
             bg = self.bg1_img
-        elif time <= 40:
+        elif time <= 4000:
             bg = self.bg2_img
         else:
             bg = self.bg3_img
@@ -438,7 +438,7 @@ def main():
         bomb_cooldown += 1
 
 
-        if tmr >= 400:
+        if tmr >= 6000:
 
             #bombの処理　爆発を三回させるかどうか
             if len(bombs) == 0 and bomb_cooldown >= 200 and attack_count < 3:
@@ -471,7 +471,7 @@ def main():
             pg.display.update()
             time.sleep(3)
 
-        if tmr == 20:
+        if tmr == 2000:
             #初期設定に戻す
             bird.rect.x = 50
             bird.rect.y = GROUND + 140
@@ -493,7 +493,7 @@ def main():
             pg.display.update()
             time.sleep(3)
 
-        if tmr == 40:
+        if tmr == 4000:
 
             #障害物も消す
             obstacle.empty()
@@ -593,8 +593,13 @@ def main():
         # for bomb in pg.sprite.groupcollide(bombs, gravity, True, False):
         #     exps.add(Explosion(bomb, 50))
 
-        # for bomb in pg.sprite.groupcollide(shield, bombs, True, True):      #課題５　防御壁
-        #     exps.add(Explosion(bomb, 50))
+        for bomb in pg.sprite.spritecollide(bird, bombs, True):
+            exps.add(Explosion(bomb, 50))
+            life.num -= 1
+            pg.display.update()
+            if life.num <= 0:
+                time.sleep(2)
+                return  
 
         for obstacles in pg.sprite.spritecollide(bird, obstacle, True):
             exps.add(Explosion(obstacles, 50))
@@ -611,7 +616,7 @@ def main():
         maps.update(screen, tmr)
 
         bird.update(screen)
-        if tmr >= 400:
+        if tmr >= 6000:
             boss.update(screen)
 
         # beams.update()
